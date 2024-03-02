@@ -1,0 +1,27 @@
+#!/usr/bin/env python3
+
+import requests
+import sys
+
+api = "http://localhost:8080/api"
+email = "test@example.com"
+message = "Hello there, can you contact me?"
+name = "Fred Bloggs"
+
+obj = {
+    "email": email,
+    "message": message,
+    "name": name,
+}
+
+resp = requests.post(
+    api + "/submit",
+    json=obj
+)
+
+if resp.status_code != 200:
+    print("Bad status: ", resp.status_code)
+    sys.exit(1)
+
+print("Submitted.")
+

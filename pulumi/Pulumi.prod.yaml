@@ -1,0 +1,14 @@
+encryptionsalt: v1:vQGk98eEeYI=:v1:tHg+f1b66tEydgA9:J1RGVNI0FssyjSXVhcKU7bfBofNFTg==
+config:
+  contact-svc:artifact-name: contact-svc
+  contact-svc:artifact-repo: europe-west1-docker.pkg.dev/example-corp/contact-svc
+  contact-svc:artifact-repo-region: europe-west1
+  contact-svc:cloud-run-region: europe-west1
+  contact-svc:domain: prod.example.com
+  contact-svc:environment: innovte
+  contact-svc:gcp-project: example-corp
+  contact-svc:gcp-region: europe-west1
+  contact-svc:hostname: contact-svc.prod.example.com
+  contact-svc:managed-zone: innovate
+  contact-svc:max-scale: "3"
+  contact-svc:min-scale: "0"

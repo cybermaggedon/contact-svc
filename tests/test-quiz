@@ -1,0 +1,87 @@
+#!/usr/bin/env python3
+
+import requests
+import sys
+
+api = "http://localhost:8080/api"
+email = "test@example.com"
+message = "Hello there, can you contact me?"
+name = "Fred Bloggs"
+
+obj = {
+    "email": email
+}
+
+resp = requests.post(
+    api + "/code",
+    json=obj
+)
+
+if resp.status_code == 200:
+    auth = resp.json()
+    code = auth["code"]
+    key = auth["key"]
+elif resp.status_code == 401:
+
+    q = resp.json()
+    print(f"Answer question: {q['question']}")
+    print("Options:")
+    for k, a in enumerate(q["answers"]):
+        print(f"  {k}: {a} ?")
+
+    print("> ", end="")
+
+    sel = int(input())
+
+    sel = q["answers"][sel]
+    print(f"You selected {sel}.")
+
+    resp = requests.post(
+        api + "/response",
+        json={
+            "key": q["key"],
+            "email": email,
+            "code": q["code"],
+            "response": sel
+        }
+    )
+
+    if resp.status_code == 401:
+        print("Challenge failed")
+        sys.exit(1)
+
+    if resp.status_code != 200:
+        print("Challenge failed")
+        sys.exit(1)
+
+    auth = resp.json()
+    code = auth["code"]
+    key = auth["key"]
+    
+
+else:
+    print("Bad status: ", resp.status_code)
+    sys.exit(1)
+
+print("Auth:", code, key)
+
+
+obj = {
+    "email": email,
+    "message": message,
+    "name": name,
+    "code": code,
+    "key": key,
+}
+
+resp = requests.post(
+    api + "/submit",
+    json=obj
+)
+
+if resp.status_code != 200:
+    print("Bad status: ", resp.status_code)
+    sys.exit(1)
+
+print("Submitted.")
+

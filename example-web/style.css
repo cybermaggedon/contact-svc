@@ -1,0 +1,149 @@
+
+body {
+    background: #e8e8d8;
+    font: 15px "Lucida Sans Unicode", "Lucida Grande", sans-serif;
+}
+
+.contact-form {
+	margin:10px auto;
+	max-width: 400px;
+	padding: 20px 12px 10px 20px;
+	font: 13px "Lucida Sans Unicode", "Lucida Grande", sans-serif;
+}
+.contact-form li {
+	padding: 0;
+	display: block;
+	list-style: none;
+	margin: 10px 0 0 0;
+}
+.contact-form label{
+	margin:0 0 3px 0;
+	padding:0px;
+	display:block;
+	font-weight: bold;
+}
+.contact-form input[type=text], 
+.contact-form input[type=date],
+.contact-form input[type=datetime],
+.contact-form input[type=number],
+.contact-form input[type=search],
+.contact-form input[type=time],
+.contact-form input[type=url],
+.contact-form input[type=email],
+textarea, 
+select{
+	box-sizing: border-box;
+	-webkit-box-sizing: border-box;
+	-moz-box-sizing: border-box;
+	border:1px solid #BEBEBE;
+	padding: 7px;
+	margin:0px;
+	-webkit-transition: all 0.30s ease-in-out;
+	-moz-transition: all 0.30s ease-in-out;
+	-ms-transition: all 0.30s ease-in-out;
+	-o-transition: all 0.30s ease-in-out;
+	outline: none;	
+}
+.contact-form input[type=text]:focus, 
+.contact-form input[type=date]
+:focus,
+.contact-form input[type=datetime]:focus,
+.contact-form input[type=number]:focus,
+.contact-form input[type=search]:focus,
+.contact-form input[type=time]:focus,
+.contact-form input[type=url]:focus,
+.contact-form input[type=email]:focus,
+.contact-form textarea:focus, 
+.contact-form select:focus{
+	-moz-box-shadow: 0 0 8px #499195;
+	-webkit-box-shadow: 0 0 8px #499195;
+	box-shadow: 0 0 8px #499195;
+	border: 1px solid #499195;
+}
+.contact-form .field-divided{
+	width: 49%;
+}
+
+.contact-form .field-long{
+	width: 100%;
+}
+.contact-form .field-select{
+	width: 100%;
+}
+.contact-form .field-textarea{
+	height: 100px;
+}
+.contact-form input[type=submit], .contact-form input[type=button]{
+	background: #948172;
+	padding: 8px 15px 8px 15px;
+	border: none;
+	color: #fff;
+}
+.contact-form input[type=submit]:hover, .contact-form input[type=button]:hover{
+	background: #489284;
+	box-shadow:none;
+	-moz-box-shadow:none;
+	-webkit-box-shadow:none;
+}
+.contact-form .required{
+	color:red;
+}
+
+
+.success {
+    color: #208020;
+    font-weight: bold;
+    padding: 1rem;
+    background-color: white;
+    border: 1px solid #a0e0a0;
+    border-radius: 0.6rem;
+}
+
+
+.failure {
+    padding: 1rem;
+    background-color: white;
+    color: #a80000;
+    border: 1px solid #e8a0a0;
+    border-radius: 0.6rem;
+}
+
+.button-space {
+    display: flex;
+    flex-direction: column;
+}
+
+.question {
+    font-weight: bold;
+}
+
+.challenge {
+}
+
+.challenge div {
+}
+
+.challenge div button {
+    margin: 1rem;
+}
+
+.button {
+    background: #804020;
+    border-radius: 10px;
+    padding: 0.6rem 1.0rem 0.6rem 1.0rem;
+    text-decoration: none;
+    display: inline-block;
+    color: #e0e8fd;
+    box-shadow:
+        inset 0 0 2px 0 rgba(255,255,255,.4),
+        inset 0 0 3px 0 rgba(0,0,0,.4),
+        inset 0 0 3px 5px rgba(0,0,0,.05),
+        2px 2px 4px 0 rgba(0,0,0,.25);
+}
+
+div#response {
+    width: 40%;
+    min-width: 20rem;
+    max-width: 30rem;
+    margin: auto;
+}

@@ -1,0 +1,42 @@
+<!HTML>
+<html>
+
+  <head>
+    <link rel="stylesheet" href="style.css">
+  </head>
+
+  <body>
+    
+    <form id="form">
+      
+      <ul class="contact-form">
+	<li>
+	  <label>Full Name <span class="required">*</span></label>
+	  <input type="text" name="name" placeholder="Name"/>
+	</li>
+	<li>
+          <label>Email <span class="required">*</span></label>
+          <input type="email" name="email" placeholder="user@example/com"
+		 class="field-long"/>
+	</li>
+	<li>
+          <label>Your Message <span class="required">*</span></label>
+          <textarea name="message" id="message"
+		    placeholder="Enter your message here"
+		    class="field-long"></textarea>
+	</li>
+	<li>
+          <input type="submit" value="Submit"/>
+	</li>
+      </ul>
+    </form>
+
+    <div id="response">
+    </div>
+
+    <script src="app.js" type="module"></script>
+
+  </body>
+
+</html>
+
