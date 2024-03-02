@@ -143,6 +143,8 @@ options:
                         Email subject header
   --enable-send, -e     Enable Sendgrid email send (default: off)
   --enable-quiz, -q     Enable a little question challenge (default: off)
+  --questions QUESTIONS, -Q QUESTIONS
+                        JSON file containing quiz questions
 ```
 
 Configuration parameters:
@@ -161,6 +163,8 @@ Configuration parameters:
   information appears in the log/output, but no output otherwise.
 - Enable quiz: Turns on the challenge flow.  The user has to answer a question
   to get the submission to work.
+- Questions: JSON file containing quiz questions.  There's 22 questions in
+  questions.json, you can add your own.
 
 # Running it
 
@@ -198,3 +202,4 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
+

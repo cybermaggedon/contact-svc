@@ -70,6 +70,12 @@ def run():
         dest='challenge',
     )
 
+    parser.add_argument(
+        "--questions", "-Q",
+        default='questions.json',
+        help='JSON file containing quiz questions'
+    )
+
     args = parser.parse_args()
 
     app = Service(
@@ -81,6 +87,7 @@ def run():
         to_email=args.to_email,
         subject=args.subject,
         challenge=args.challenge,
+        questions=args.questions,
     )
 
     logger.info("Running service...")

@@ -22,6 +22,7 @@ RUN pip3 --no-cache-dir install /root/wheels/* && \
     rm -rf /root/wheels
 
 RUN mkdir /data
+COPY questions.json /data/
 WORKDIR /data
 
 CMD /usr/local/bin/contact-svc -q

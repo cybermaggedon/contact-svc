@@ -11,8 +11,9 @@ from sendgrid.helpers.mail import Mail
 from lxml import etree
 from lxml.builder import ElementMaker
 import asyncio
+import json
 
-from . questions import random_question
+from . questions import QuestionBank
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -20,7 +21,7 @@ logger.setLevel(logging.INFO)
 class Service:
     def __init__(
             self, verification_secret, from_email, to_email, sendgrid_api_key,
-            subject, challenge, port=8080, send=False
+            subject, challenge, questions, port=8080, send=False
     ):
 
         self.port = port
@@ -31,7 +32,15 @@ class Service:
         self.subject = subject
         self.send_enabled = send
         self.challenge = challenge
-        self.sleep_time = 2
+        self.sleep_time = 0.2
+
+        if challenge:
+            with open(questions, "r") as f:
+                qdata = json.load(f)
+
+            logging.info(f"Question base of {len(qdata)} loaded")
+            
+            self.questions = QuestionBank(qdata)
 
     def make_salt(self):
         return ''.join(
@@ -93,7 +102,7 @@ class Service:
 
             if self.challenge:
 
-                q = random_question()
+                q = self.questions.random_question()
                 key, code = self.generate_code(q.correct)
 
                 logging.info(f"Challenge: {q.question}")
