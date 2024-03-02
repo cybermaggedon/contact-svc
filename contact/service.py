@@ -32,7 +32,7 @@ class Service:
         self.subject = subject
         self.send_enabled = send
         self.challenge = challenge
-        self.sleep_time = 0.2
+        self.sleep_time = 1
 
         if challenge:
             with open(questions, "r") as f:
