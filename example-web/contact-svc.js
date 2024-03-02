@@ -111,14 +111,13 @@ class ContactForm {
     }
 
     // Submit a contact request, having verified to get a key/code
-    submit(email, message, name, key, code) {
+    submit(email, message, name, verifier) {
         
         const submission = {
             "email": email,
             "message": message,
             "name": name,
-            "code": code,
-            "key": key,
+            "verifier": verifier,
         };
         
         this.showSubmitting();
@@ -153,7 +152,7 @@ class ContactForm {
     }
 
     // Respond to a challenge with an answer
-    respond(a, key, code, email, message, name) {
+    respond(a, challenge, email, message, name) {
 
         this.showOK("Sending response...");
 
@@ -165,13 +164,14 @@ class ContactForm {
                 body: JSON.stringify({
                     "email": email,
                     "response": a,
-                    "key": key,
-                    "code": code,
+                    "verifier": challenge.verifier,
+                    "validity": challenge.validity,
                 }),
             }
         ).then(
             resp => {
 
+                console.log(resp.status);
                 if (resp.status == 200) {
 
                     // 200 status = OK.  Decode JSON response...
@@ -179,14 +179,16 @@ class ContactForm {
 
                         // ... and use the auth info to submit contact information
                         auth => {
-                            this.submit(email, message, name, auth.key, auth.code);
+                            this.submit(email, message, name, auth.verifier);
                         }
 
                     );
 
-                } else
-
+                } else if (resp.status == 410) {
+                    this.showError("Challenge timed out, please try again");
+                } else {
                     this.showChallengeError();
+                }
             }
         ).catch(
             err => this.showError(err)
@@ -241,7 +243,7 @@ class ContactForm {
 
             btn.onclick = (e) => {
                 this.respond(
-                    a, challenge.key, challenge.code, email, message, name
+                    a, challenge, email, message, name
                 );
             };
 
@@ -303,11 +305,11 @@ class ContactForm {
                 
                 if (resp.status == 200) {
 
-                    // 200 status, should get key/code, go straight to
+                    // 200 status, should get verifier, go straight to
                     // submission
                     resp.json().then(
                         resp => this.submit(
-                            email, message, name, resp.key, resp.code
+                            email, message, name, resp.verifier
                         )
                     );
                     

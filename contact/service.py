@@ -12,6 +12,7 @@ from lxml import etree
 from lxml.builder import ElementMaker
 import asyncio
 import json
+import time
 
 from . questions import QuestionBank
 
@@ -32,7 +33,14 @@ class Service:
         self.subject = subject
         self.send_enabled = send
         self.challenge = challenge
+
+        # How long to wait in requests.  This alleviates some low-scale DDoS and
+        # fuzzing threats
         self.sleep_time = 1
+
+        # How long are challenges valid for?  This is the expiry of challenge
+        # validity codes
+        self.response_window = 120
 
         if challenge:
             with open(questions, "r") as f:
@@ -48,32 +56,6 @@ class Service:
             for _ in range(6)
         )
 
-    async def response(self, request):
-
-        data = await request.json()
-
-        await asyncio.sleep(self.sleep_time)
-
-        email = data["email"]
-        response = data["response"]
-        code = data["code"]
-        key = data["key"]
-
-
-        logging.info(f"Response: {response}")
-
-        if not self.check_code(key, code, response):
-            return web.HTTPUnauthorized()
-
-        key, code = self.generate_code(email)
-
-        return web.json_response(
-            {
-                "code": code,
-                "key": key,
-            }
-        )
-
     def generate_code(self, input):
 
         salt = self.make_salt()
@@ -82,10 +64,44 @@ class Service:
         code = hash.hexdigest()
         return salt, code
 
-    def check_code(self, key, code, input):
+    def check_code(self, verifier, input):
+
+        key = verifier[0]
+        code = verifier[1]
 
         value = key + ":" + input + ":" + self.secret
 
+        hash = hashlib.sha1(value.encode("utf-8"))
+        if code != hash.hexdigest():
+            return False
+
+        return True        
+
+    def generate_validity_code(self, valid=0):
+
+        if valid == 0: valid = self.response_window
+
+        salt = self.make_salt()
+        expiry = str(int(time.time()) + valid)
+        value = salt + ":" + expiry + ":" + self.secret
+        hash = hashlib.sha1(value.encode("utf-8"))
+        code = hash.hexdigest()
+        return expiry, salt, code
+
+    def check_validity_code(self, validity, valid=0):
+
+        if valid == 0: valid = self.response_window
+
+        expiry = int(validity[0])
+        salt = validity[1]
+        code = validity[2]
+
+        now = int(time.time())
+
+        if expiry < now:
+            return False
+
+        value = salt + ":" + validity[0] + ":" + self.secret
         hash = hashlib.sha1(value.encode("utf-8"))
         if code != hash.hexdigest():
             return False
@@ -103,7 +119,10 @@ class Service:
             if self.challenge:
 
                 q = self.questions.random_question()
-                key, code = self.generate_code(q.correct)
+
+                verifier = self.generate_code(q.correct)
+
+                validity = self.generate_validity_code()
 
                 logging.info(f"Challenge: {q.question}")
                 logging.info(f"Expecting: {q.correct}")
@@ -112,8 +131,8 @@ class Service:
                     {
                         "question": q.question,
                         "answers": q.answers,
-                        "key": key,
-                        "code": code,
+                        "verifier": verifier,
+                        "validity": validity
                     },
                     status=401
                 )
@@ -121,19 +140,46 @@ class Service:
             else:
                 
                 email = data["email"]
-                key, code = self.generate_code(email)
+                verifier = self.generate_code(email)
                 logging.info("Verification complete for " + email)
 
                 return web.json_response(
                     {
-                        "code": code,
-                        "key": key,
+                        "verifier": verifier,
                     }
                 )
 
         except Exception as e:
             logging.error(str(e))
             raise web.HTTPBadRequest()
+
+    async def response(self, request):
+
+        data = await request.json()
+
+        await asyncio.sleep(self.sleep_time)
+
+        email = data["email"]
+        response = data["response"]
+        verifier = data["verifier"]
+        validity = data["validity"]
+
+        logging.info(f"Response: {response}")
+
+        if not self.check_code(verifier, response):
+            return web.HTTPUnauthorized()
+
+        if not self.check_validity_code(validity):
+            logging.info("Answer timed out")
+            return web.HTTPGone()
+
+        verifier = self.generate_code(email)
+
+        return web.json_response(
+            {
+                "verifier": verifier,
+            }
+        )
 
     async def submit(self, request):
             
@@ -146,19 +192,15 @@ class Service:
             email = data["email"]
             name = data["name"]
             message = data["message"]
-            code = data["code"]
-            key = data["key"]
+            verifier = data["verifier"]
 
             logging.info(f"Email: {email}")
             logging.info(f"Name: {name}")
             logging.info(f"Message: {message}")
-            logging.info(f"Code: {code}")
-            logging.info(f"Key: {key}")
+            logging.info(f"Verifier: {verifier}")
             logging.info("--------------")
 
-            value = key + ":" + email + ":" + self.secret
-
-            if not self.check_code(key, code, email):
+            if not self.check_code(verifier, email):
                 return web.HTTPUnauthorized()
 
         except Exception as e:
