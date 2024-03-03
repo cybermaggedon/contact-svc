@@ -252,6 +252,9 @@ class ContactForm {
 
                 } else if (resp.status == 410) {
                     this.showError("Challenge timed out, please try again");
+                } else if (resp.status == 429) {
+                    // 429 == rate limit etc.
+                    this.showError("Server is busy, try later on.")
                 } else {
                     this.showChallengeError();
                 }
@@ -373,6 +376,12 @@ class ContactForm {
                         cha => this.showChallenge(cha, email, message, name)
 
                     );
+
+                } else if (resp.status == 429) {
+
+                    // 429 == rate limit etc.
+                    this.showError("Server is busy, try later on.")
+
                 } else {
 
                     // None of the above, it's an error

@@ -28,7 +28,8 @@ setuptools.setup(
         'aiohttp-cors',
         'sendgrid',
         'argparse',
-        'lxml'
+        'lxml',
+        'ratelimit'
     ],
     scripts=[
         "scripts/contact-svc",

@@ -13,6 +13,8 @@ from lxml.builder import ElementMaker
 import asyncio
 import json
 import time
+import ratelimit
+import os
 
 from . questions import QuestionBank
 
@@ -20,6 +22,10 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 class Service:
+
+    RATE_LIMIT_PERIOD = int(os.getenv("RATE_CALL_PERIOD", 60))
+    RATE_CALL_LIMIT = int(os.getenv("RATE_CALL_LIMIT", 10))
+
     def __init__(
             self, verification_secret, from_email, to_email, sendgrid_api_key,
             subject, challenge, questions, port=8080, send=False
@@ -35,8 +41,9 @@ class Service:
         self.challenge = challenge
 
         # How long to wait in requests.  This alleviates some low-scale DDoS and
-        # fuzzing threats
-        self.sleep_time = 1
+        # fuzzing threats.  Note so important now that the rate limiter is in
+        # place.
+        self.sleep_time = 0.5
 
         # How long are challenges valid for?  This is the expiry of challenge
         # validity codes.
@@ -85,6 +92,7 @@ class Service:
 
         return expiry
 
+    @ratelimit.limits(calls=RATE_CALL_LIMIT, period=RATE_LIMIT_PERIOD)
     def check_expiry(self, validity, valid=0):
 
         if valid == 0: valid = self.response_window
@@ -109,10 +117,13 @@ class Service:
             else:
                 return self.create_signature(data["email"])
 
+        except ratelimit.RateLimitException:
+            raise web.HTTPTooManyRequests()
         except Exception as e:
             logging.error(str(e))
             raise web.HTTPBadRequest()
 
+    @ratelimit.limits(calls=RATE_CALL_LIMIT, period=RATE_LIMIT_PERIOD)
     def create_challenge(self, email):
 
         q = self.questions.random_question()
@@ -137,6 +148,7 @@ class Service:
             status=401
         )
 
+    @ratelimit.limits(calls=RATE_CALL_LIMIT, period=RATE_LIMIT_PERIOD)
     def create_signature(self, email):
 
         expiry = self.generate_expiry()
@@ -161,9 +173,12 @@ class Service:
 
         expiry = data["expiry"]
 
-        if not self.check_expiry(expiry):
-            logging.info("Answer timed out")
-            return web.HTTPGone()
+        try:
+            if not self.check_expiry(expiry):
+                logging.info("Answer timed out")
+                return web.HTTPGone()
+        except ratelimit.RateLimitException:
+            raise web.HTTPTooManyRequests()
 
         email = data["email"]
         response = data["response"]
@@ -203,6 +218,9 @@ class Service:
             logging.info(f"Name: {name}")
             logging.info(f"Message: {message}")
             logging.info("--------------")
+
+        except ratelimit.RateLimitException:
+            raise web.HTTPTooManyRequests()
 
         except Exception as e:
             logging.error(str(e))
@@ -283,7 +301,7 @@ class Service:
 
         return web.Response()
 
-    def run(self):
+    async def task(self):
 
         app = web.Application()
         
@@ -321,5 +339,9 @@ class Service:
             }
         )
 
-        web.run_app(app, port=self.port)
+        return app
+
+    def run(self):
+
+        web.run_app(self.task(), port=self.port)
 

@@ -36,10 +36,16 @@ the random bots wandering the 'net.
 - An optional challenge step which requires the user to answer a question,
   a primitive CAPCHA.
 - A delay in the verification steps as a DDoS/fuzz defence.
+- A rate limit
 
 There is probably enough defence to prevent bulk spambots from spamming you
 and using up all your Sendgrid credits.  Useful for a small business / hobbyist
 site.  For anything larger scale, just go and use a commercial form site.
+
+The rate limit can be set with RATE_CALL_PERIOD and RATE_CALL_LIMIT environment
+variables:
+- `RATE_CALL_PERIOD`: Period (in seconds) over which to apply the rate limit
+- `RATE_CALL_LIMIT`: Maximum number of calls per limit window.
 
 ## Workflows
 
