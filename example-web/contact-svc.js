@@ -132,6 +132,10 @@ class ContactForm {
     }
 
     tick() {
+
+        // Submission happened, not ticking now.
+        if (this.expiry == 0) return;
+
         const now = Math.round(new Date().getTime() / 1000);
 
         if (this.expiry > now) {
@@ -167,6 +171,7 @@ class ContactForm {
         p.appendChild(
             document.createTextNode("Please answer this question in ")
         );
+
         let span = document.createElement("span");
         span.id = "countdown";
         span.appendChild(
@@ -215,6 +220,9 @@ class ContactForm {
 
     // Respond to a challenge with an answer
     respond(a, challenge, email, message, name) {
+
+        this.expiry = 0;
+        this.countdown = null;
 
         this.showOK("Sending response...");
 
