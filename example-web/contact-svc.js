@@ -110,6 +110,40 @@ class ContactForm {
         );
     }
 
+    update_ticker() {
+        while (this.countdown.firstChild)
+            this.countdown.removeChild(this.countdown.firstChild);
+        const now = Math.round(new Date().getTime() / 1000);
+        const remaining = (this.expiry - now).toString();
+
+        this.countdown.appendChild(
+            document.createTextNode(remaining)
+        );
+
+        this.countdown.appendChild(
+            document.createTextNode(" second")
+        );
+
+        if (remaining != 1)
+            this.countdown.appendChild(
+                document.createTextNode("s")
+            );
+
+    }
+
+    tick() {
+        const now = Math.round(new Date().getTime() / 1000);
+
+        if (this.expiry > now) {
+            this.update_ticker();
+            setTimeout(() => this.tick(), 5000);
+        } else {
+            this.showError("Challenge has timed out!  Please resubmit.")
+            this.expiry = 0;
+        }
+
+    }
+
     // Show a challenge question + buttons
     showChallenge(challenge, email, message, name) {
 
@@ -131,8 +165,20 @@ class ContactForm {
         let p = document.createElement("p");
         div.appendChild(p);
         p.appendChild(
-            document.createTextNode("Please answer this question...")
+            document.createTextNode("Please answer this question in ")
         );
+        let span = document.createElement("span");
+        span.id = "countdown";
+        span.appendChild(
+            document.createTextNode("-")
+        );
+        p.appendChild(span);
+        p.appendChild(document.createTextNode("..."));
+
+        this.countdown = span;
+
+        this.expiry = challenge.validity[0];
+        setTimeout(() => this.tick(), 5000);
 
         // Show the question which must be answered
         p = document.createElement("p");
@@ -163,6 +209,8 @@ class ContactForm {
 
         }
 
+        this.update_ticker();
+
     }
 
     // Respond to a challenge with an answer
@@ -184,8 +232,6 @@ class ContactForm {
             }
         ).then(
             resp => {
-
-                console.log(resp.status);
                 if (resp.status == 200) {
 
                     // 200 status = OK.  Decode JSON response...
