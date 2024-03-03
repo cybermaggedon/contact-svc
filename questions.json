@@ -300,7 +300,7 @@
         "question": "Who was the founder of Linux?",
         "answers": [
             "Steve Jobs",
-            "Linus Torvals",
+            "Linus Torvalds",
             "Jeff Bezos"
         ],
         "correct": 1

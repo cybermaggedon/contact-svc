@@ -40,7 +40,7 @@ class Service:
 
         # How long are challenges valid for?  This is the expiry of challenge
         # validity codes
-        self.response_window = 120
+        self.response_window = 45
 
         if challenge:
             with open(questions, "r") as f:
@@ -56,7 +56,7 @@ class Service:
             for _ in range(6)
         )
 
-    def generate_code(self, input):
+    def generate_signature(self, input):
 
         salt = self.make_salt()
         value = salt + ":" + input + ":" + self.secret
@@ -64,10 +64,10 @@ class Service:
         code = hash.hexdigest()
         return salt, code
 
-    def check_code(self, verifier, input):
+    def check_signature(self, signature, input):
 
-        key = verifier[0]
-        code = verifier[1]
+        key = signature[0]
+        code = signature[1]
 
         value = key + ":" + input + ":" + self.secret
 
@@ -77,38 +77,62 @@ class Service:
 
         return True        
 
-    def generate_validity_code(self, valid=0):
+    def generate_validity(self, valid=0):
 
         if valid == 0: valid = self.response_window
 
-        salt = self.make_salt()
         expiry = str(int(time.time()) + valid)
-        value = salt + ":" + expiry + ":" + self.secret
-        hash = hashlib.sha1(value.encode("utf-8"))
-        code = hash.hexdigest()
-        return expiry, salt, code
+        sig = self.generate_signature(expiry)
 
-    def check_validity_code(self, validity, valid=0):
+        return expiry, sig
+
+    def check_validity(self, validity, valid=0):
 
         if valid == 0: valid = self.response_window
-
-        expiry = int(validity[0])
-        salt = validity[1]
-        code = validity[2]
 
         now = int(time.time())
 
-        if expiry < now:
+        if int(validity[0]) < now:
             return False
 
-        value = salt + ":" + validity[0] + ":" + self.secret
-        hash = hashlib.sha1(value.encode("utf-8"))
-        if code != hash.hexdigest():
-            return False
+        return self.check_signature(validity[1], validity[0])
 
-        return True        
+    def create_challenge(self):
 
-    async def submission_code(self, request):
+        q = self.questions.random_question()
+
+        signature = self.generate_signature(q.correct)
+
+        validity = self.generate_validity()
+
+        logging.info(f"Challenge: {q.question}")
+        logging.info(f"Expecting: {q.correct}")
+
+        return web.json_response(
+            {
+                "question": q.question,
+                "answers": q.answers,
+                "signature": signature,
+                "validity": validity
+            },
+            status=401
+        )
+
+    def create_signature(self, email):
+
+        signature = self.generate_signature(email)
+        validity = self.generate_validity()
+
+        logging.info("Verification complete for " + email)
+
+        return web.json_response(
+            {
+                "signature": signature,
+                "validity": validity,
+            }
+        )
+        
+    async def verify(self, request):
 
         data = await request.json()
 
@@ -117,37 +141,9 @@ class Service:
         try:
 
             if self.challenge:
-
-                q = self.questions.random_question()
-
-                verifier = self.generate_code(q.correct)
-
-                validity = self.generate_validity_code()
-
-                logging.info(f"Challenge: {q.question}")
-                logging.info(f"Expecting: {q.correct}")
-
-                return web.json_response(
-                    {
-                        "question": q.question,
-                        "answers": q.answers,
-                        "verifier": verifier,
-                        "validity": validity
-                    },
-                    status=401
-                )
-
+                return self.create_challenge()
             else:
-                
-                email = data["email"]
-                verifier = self.generate_code(email)
-                logging.info("Verification complete for " + email)
-
-                return web.json_response(
-                    {
-                        "verifier": verifier,
-                    }
-                )
+                return self.create_signature(data["email"])
 
         except Exception as e:
             logging.error(str(e))
@@ -159,27 +155,22 @@ class Service:
 
         await asyncio.sleep(self.sleep_time)
 
-        email = data["email"]
-        response = data["response"]
-        verifier = data["verifier"]
         validity = data["validity"]
 
-        logging.info(f"Response: {response}")
-
-        if not self.check_code(verifier, response):
-            return web.HTTPUnauthorized()
-
-        if not self.check_validity_code(validity):
+        if not self.check_validity(validity):
             logging.info("Answer timed out")
             return web.HTTPGone()
 
-        verifier = self.generate_code(email)
+        email = data["email"]
+        response = data["response"]
+        signature = data["signature"]
 
-        return web.json_response(
-            {
-                "verifier": verifier,
-            }
-        )
+        logging.info(f"Response: {response}")
+
+        if not self.check_signature(signature, response):
+            return web.HTTPUnauthorized()
+
+        return self.create_signature(email)
 
     async def submit(self, request):
             
@@ -192,16 +183,20 @@ class Service:
             email = data["email"]
             name = data["name"]
             message = data["message"]
-            verifier = data["verifier"]
+            signature = data["signature"]
+            validity = data["validity"]
+
+            if not self.check_validity(validity):
+                logging.info("Answer timed out")
+                return web.HTTPGone()
+
+            if not self.check_signature(signature, email):
+                return web.HTTPUnauthorized()
 
             logging.info(f"Email: {email}")
             logging.info(f"Name: {name}")
             logging.info(f"Message: {message}")
-            logging.info(f"Verifier: {verifier}")
             logging.info("--------------")
-
-            if not self.check_code(verifier, email):
-                return web.HTTPUnauthorized()
 
         except Exception as e:
             logging.error(str(e))
@@ -288,17 +283,9 @@ class Service:
         
         cors = aiohttp_cors.setup(app)
 
-        resource = cors.add(app.router.add_resource("/api/code"))
+        resource = cors.add(app.router.add_resource("/api/verify"))
         route = cors.add(
-            resource.add_route("POST", self.submission_code),
-            {
-                "*": aiohttp_cors.ResourceOptions(allow_credentials=False),
-            }
-        )
-
-        resource = cors.add(app.router.add_resource("/api/submit"))
-        route = cors.add(
-            resource.add_route("POST", self.submit),
+            resource.add_route("POST", self.verify),
             {
                 "*": aiohttp_cors.ResourceOptions(allow_credentials=False),
             }
@@ -307,6 +294,14 @@ class Service:
         resource = cors.add(app.router.add_resource("/api/response"))
         route = cors.add(
             resource.add_route("POST", self.response),
+            {
+                "*": aiohttp_cors.ResourceOptions(allow_credentials=False),
+            }
+        )
+
+        resource = cors.add(app.router.add_resource("/api/submit"))
+        route = cors.add(
+            resource.add_route("POST", self.submit),
             {
                 "*": aiohttp_cors.ResourceOptions(allow_credentials=False),
             }

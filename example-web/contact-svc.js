@@ -110,92 +110,6 @@ class ContactForm {
         );
     }
 
-    // Submit a contact request, having verified to get a key/code
-    submit(email, message, name, verifier) {
-        
-        const submission = {
-            "email": email,
-            "message": message,
-            "name": name,
-            "verifier": verifier,
-        };
-        
-        this.showSubmitting();
-
-        // Post to the 'submit' endpoint
-        fetch(
-            this.api + "/submit",
-            {
-                method: "POST",
-                body: JSON.stringify(submission),
-            }
-        ).then(
-            resp => {
-
-                // Check on status code, 200 == OK.
-                if (resp.status == 200) {
-
-                    // Response, also reset form fields now that the submission
-                    // worked.
-                    this.showSubmitted();
-                    this.form.reset();
-
-                } else
-
-                    this.showSubmissionError();
-
-            }
-        ).catch(
-            err => this.showError(err)
-        );
-
-    }
-
-    // Respond to a challenge with an answer
-    respond(a, challenge, email, message, name) {
-
-        this.showOK("Sending response...");
-
-        // Send to response API
-        fetch(
-            this.api + "/response",
-            {
-                method: "POST",
-                body: JSON.stringify({
-                    "email": email,
-                    "response": a,
-                    "verifier": challenge.verifier,
-                    "validity": challenge.validity,
-                }),
-            }
-        ).then(
-            resp => {
-
-                console.log(resp.status);
-                if (resp.status == 200) {
-
-                    // 200 status = OK.  Decode JSON response...
-                    resp.json().then(
-
-                        // ... and use the auth info to submit contact information
-                        auth => {
-                            this.submit(email, message, name, auth.verifier);
-                        }
-
-                    );
-
-                } else if (resp.status == 410) {
-                    this.showError("Challenge timed out, please try again");
-                } else {
-                    this.showChallengeError();
-                }
-            }
-        ).catch(
-            err => this.showError(err)
-        );
-
-    }
-
     // Show a challenge question + buttons
     showChallenge(challenge, email, message, name) {
 
@@ -251,6 +165,93 @@ class ContactForm {
 
     }
 
+    // Respond to a challenge with an answer
+    respond(a, challenge, email, message, name) {
+
+        this.showOK("Sending response...");
+
+        // Send to response API
+        fetch(
+            this.api + "/response",
+            {
+                method: "POST",
+                body: JSON.stringify({
+                    "email": email,
+                    "response": a,
+                    "signature": challenge.signature,
+                    "validity": challenge.validity,
+                }),
+            }
+        ).then(
+            resp => {
+
+                console.log(resp.status);
+                if (resp.status == 200) {
+
+                    // 200 status = OK.  Decode JSON response...
+                    resp.json().then(
+
+                        // ... and use the auth info to submit contact information
+                        auth => {
+                            this.submit(email, message, name, auth);
+                        }
+
+                    );
+
+                } else if (resp.status == 410) {
+                    this.showError("Challenge timed out, please try again");
+                } else {
+                    this.showChallengeError();
+                }
+            }
+        ).catch(
+            err => this.showError(err)
+        );
+
+    }
+
+    // Submit a contact request, having verified to get a key/code
+    submit(email, message, name, resp) {
+        
+        const submission = {
+            "email": email,
+            "message": message,
+            "name": name,
+            "signature": resp.signature,
+            "validity": resp.validity,
+        };
+        
+        this.showSubmitting();
+
+        // Post to the 'submit' endpoint
+        fetch(
+            this.api + "/submit",
+            {
+                method: "POST",
+                body: JSON.stringify(submission),
+            }
+        ).then(
+            resp => {
+
+                // Check on status code, 200 == OK.
+                if (resp.status == 200) {
+
+                    // Response, also reset form fields now that the submission
+                    // worked.
+                    this.showSubmitted();
+                    this.form.reset();
+
+                } else
+
+                    this.showSubmissionError();
+
+            }
+        ).catch(
+            err => this.showError(err)
+        );
+
+    }
+
     // Form submit event, this kicks the workflow off
     formSubmit(e) {
 
@@ -289,7 +290,7 @@ class ContactForm {
 
         // Send to verification endpoint
         fetch(
-            this.api + "/code",
+            this.api + "/verify",
             {
                 method: "POST",
                 body: JSON.stringify({
@@ -305,12 +306,10 @@ class ContactForm {
                 
                 if (resp.status == 200) {
 
-                    // 200 status, should get verifier, go straight to
+                    // 200 status, should get signature, go straight to
                     // submission
                     resp.json().then(
-                        resp => this.submit(
-                            email, message, name, resp.verifier
-                        )
+                        resp => this.submit(email, message, name, resp)
                     );
                     
                 } else if (resp.status == 401) {
