@@ -6,11 +6,12 @@ class ContactForm {
     // and message fields.  ContactForm changes the submit event.
     // response = a div to put messages in
     // api = The URL of the contact-svc e.g. http://locahost:8080/api
-    constructor(form, response, api) {
+    constructor(form, response, api, fallback) {
 
         this.form = form;
         this.response = response;
         this.api = api;
+        this.fallback = fallback;
 
         // Jack into the form submit event
         form.addEventListener(
@@ -104,10 +105,7 @@ class ContactForm {
     // Status check fail means the service is probably offline, show
     // a backup contact method
     showDown() {
-        this.showError(
-            "Contact service is not working! " +
-                "Suggest you email hello@example.com instead."
-        );
+        this.showError(this.fallback);
     }
 
     update_ticker() {
@@ -182,7 +180,7 @@ class ContactForm {
 
         this.countdown = span;
 
-        this.expiry = challenge.validity[0];
+        this.expiry = Number(challenge.expiry);
         setTimeout(() => this.tick(), 5000);
 
         // Show the question which must be answered
@@ -235,7 +233,7 @@ class ContactForm {
                     "email": email,
                     "response": a,
                     "signature": challenge.signature,
-                    "validity": challenge.validity,
+                    "expiry": challenge.expiry,
                 }),
             }
         ).then(
@@ -272,7 +270,7 @@ class ContactForm {
             "message": message,
             "name": name,
             "signature": resp.signature,
-            "validity": resp.validity,
+            "expiry": resp.expiry,
         };
         
         this.showSubmitting();
@@ -394,9 +392,10 @@ class ContactForm {
 
 };
 
-function initContact(form, response, api) {
-    const cf = new ContactForm(form, response, api);
+function initContact(form, response, api, fallback) {
+    const cf = new ContactForm(form, response, api, fallback);
 }
 
 export { initContact };
+
 

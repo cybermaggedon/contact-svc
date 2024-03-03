@@ -11,6 +11,7 @@ const api = "http://localhost:8080/api";
 initContact(
     document.getElementById("form"),
     document.getElementById("response"),
-    api
+    api,
+    "Contact service is not working. I suggest you contact hello@example.org."
 );
 

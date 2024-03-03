@@ -30,14 +30,16 @@ the random bots wandering the 'net.
 
 ## Security features
 
-- Two-stage submission which involves the exchange of a verification code.
-  Makes it a little harder for bots to just spam the submission endpoint.
-- An optional challenge step which requires the user to answer a question.
+- Two/three-stage submission which involves the exchange of a verification code.
+  Multiple API calls are required which makes it a little harder for bots to just
+  spam the submission endpoint.
+- An optional challenge step which requires the user to answer a question,
+  a primitive CAPCHA.
 - A delay in the verification steps as a DDoS/fuzz defence.
 
-There is probably enough defence to prevent the worst spambots from spamming you
-and using up all your Sendgrid credits, for a small business / hobbyist site.
-For anything serious just go and use a commercial form site.
+There is probably enough defence to prevent bulk spambots from spamming you
+and using up all your Sendgrid credits.  Useful for a small business / hobbyist
+site.  For anything larger scale, just go and use a commercial form site.
 
 ## Workflows
 
@@ -47,27 +49,27 @@ on or not:
 ### Challenge enabled
 
 - Client has 3 values: an email, a name and a message from the form.
-- Client calls the 'code' endpoint to generate a code.
+- Client calls the 'verify' endpoint.
 - The endpoint returns a 401 (Unauthorized) response indicating the challenge
   workflow is in use.  The response contains a question, and multiple-choice
   answers.
 - The user selects an answer.
 - client calls the 'response' endpoint with the answer plus the email
   address.
-- If the answer is correct, the endpoint returns credentials which are tied
+- If the answer is correct, the endpoint returns a signature tied
   to the email address.  (if not, a 401 error is returned).
-- The client submits name, email and message along with the credentials which
-  demonstrate that the verification step was completed.
+- The client submits name, email and message along with the signature which
+  demonstrates that the verification step was completed.
 
 ### Challenge disabled
 
 Like above, but without the challenge step
 
 - Client has 3 values: an email, a name and a message from the form.
-- Client calls the 'code' endpoint to generate a code.
-- The endpoint returns a 200 response containing the credentials.
-- The client submits name, email and message along with the credentials which
-  demonstrate that the verification step was completed.
+- Client calls the 'verify' endpoint to generate a code.
+- The endpoint returns a 200 response containing the signature.
+- The client submits name, email and message along with the signature which
+  demonstrates that the verification step was completed.
 
 ## APIs
 
@@ -77,7 +79,7 @@ Purpose: Returns a 200 OK response
 
 Input: n/a
 
-### Endpoint: `/api/code`
+### Endpoint: `/api/verify`
 
 Purpose: Generates a validation code 
 
@@ -87,35 +89,44 @@ Input: JSON body containing:
 Outputs (challenge workflow): 401 status
 - question
 - candidate answer list
-- Challenge key/code pair
+- email
+- expiry
+- signature
 
 Outputs (non-challenge workflow): 200 status
-- Verification key/code pair
+- email
+- expiry
+- signature
 
 ### Endpoint: `/api/response`
 
 Purpose: Generates a validation code
 
 Input: JSON body containing:
-- answer
-- email address
-- Challenge key/code pair
+- email
+- response
+- expiry
+- signature
 
 Outputs:
-- Verification key/code pair
+- email
+- expiry
+- signature
 
 ### Endpoint: `/api/submit`
 
 Purpose: Submits the form
 
 Input: JSON body containing:
-- name
 - email
+- name
 - message
-- Verification key/code pair
+- expiry
+- signature
 
 Outputs:
-- Verification key/code pair
+- 200 status: success
+- 401 status: signature failure
 
 ## Usage
 

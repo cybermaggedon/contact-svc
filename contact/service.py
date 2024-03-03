@@ -77,61 +77,25 @@ class Service:
 
         return True        
 
-    def generate_validity(self, valid=0):
+    def generate_expiry(self, valid=0):
 
         if valid == 0: valid = self.response_window
 
         expiry = str(int(time.time()) + valid)
-        sig = self.generate_signature(expiry)
 
-        return expiry, sig
+        return expiry
 
-    def check_validity(self, validity, valid=0):
+    def check_expiry(self, validity, valid=0):
 
         if valid == 0: valid = self.response_window
 
         now = int(time.time())
 
-        if int(validity[0]) < now:
+        if int(validity) < now:
             return False
 
-        return self.check_signature(validity[1], validity[0])
+        return True
 
-    def create_challenge(self):
-
-        q = self.questions.random_question()
-
-        signature = self.generate_signature(q.correct)
-
-        validity = self.generate_validity()
-
-        logging.info(f"Challenge: {q.question}")
-        logging.info(f"Expecting: {q.correct}")
-
-        return web.json_response(
-            {
-                "question": q.question,
-                "answers": q.answers,
-                "signature": signature,
-                "validity": validity
-            },
-            status=401
-        )
-
-    def create_signature(self, email):
-
-        signature = self.generate_signature(email)
-        validity = self.generate_validity()
-
-        logging.info("Verification complete for " + email)
-
-        return web.json_response(
-            {
-                "signature": signature,
-                "validity": validity,
-            }
-        )
-        
     async def verify(self, request):
 
         data = await request.json()
@@ -141,7 +105,7 @@ class Service:
         try:
 
             if self.challenge:
-                return self.create_challenge()
+                return self.create_challenge(data["email"])
             else:
                 return self.create_signature(data["email"])
 
@@ -149,15 +113,55 @@ class Service:
             logging.error(str(e))
             raise web.HTTPBadRequest()
 
+    def create_challenge(self, email):
+
+        q = self.questions.random_question()
+        expiry = self.generate_expiry()
+
+        signature = self.generate_signature(
+            expiry + ":" + email + ":" + q.correct
+        )
+
+
+        logging.info(f"Challenge: {q.question}")
+        logging.info(f"Expecting: {q.correct}")
+
+        return web.json_response(
+            {
+                "question": q.question,
+                "answers": q.answers,
+                "email": email,
+                "expiry": expiry,
+                "signature": signature,
+            },
+            status=401
+        )
+
+    def create_signature(self, email):
+
+        expiry = self.generate_expiry()
+
+        signature = self.generate_signature(expiry + ":" + email)
+
+        logging.info("Verification complete for " + email)
+
+        return web.json_response(
+            {
+                "email": email,
+                "expiry": expiry,
+                "signature": signature,
+            }
+        )
+        
     async def response(self, request):
 
         data = await request.json()
 
         await asyncio.sleep(self.sleep_time)
 
-        validity = data["validity"]
+        expiry = data["expiry"]
 
-        if not self.check_validity(validity):
+        if not self.check_expiry(expiry):
             logging.info("Answer timed out")
             return web.HTTPGone()
 
@@ -167,7 +171,9 @@ class Service:
 
         logging.info(f"Response: {response}")
 
-        if not self.check_signature(signature, response):
+        if not self.check_signature(
+                signature, expiry + ":" + email + ":" + response
+        ):
             return web.HTTPUnauthorized()
 
         return self.create_signature(email)
@@ -184,13 +190,13 @@ class Service:
             name = data["name"]
             message = data["message"]
             signature = data["signature"]
-            validity = data["validity"]
+            expiry = data["expiry"]
 
-            if not self.check_validity(validity):
+            if not self.check_expiry(expiry):
                 logging.info("Answer timed out")
                 return web.HTTPGone()
 
-            if not self.check_signature(signature, email):
+            if not self.check_signature(signature, expiry + ":" + email):
                 return web.HTTPUnauthorized()
 
             logging.info(f"Email: {email}")
