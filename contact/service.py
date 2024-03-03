@@ -39,8 +39,8 @@ class Service:
         self.sleep_time = 1
 
         # How long are challenges valid for?  This is the expiry of challenge
-        # validity codes
-        self.response_window = 45
+        # validity codes.
+        self.response_window = 60
 
         if challenge:
             with open(questions, "r") as f:
